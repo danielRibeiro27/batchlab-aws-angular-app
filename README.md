@@ -1,40 +1,39 @@
-# BatchLab
+# BatchLab – Async Batch Processing Lab
 
 ## Overview
 
-BatchLab is an asynchronous batch processing API. The system receives processing requests (jobs), publishes these tasks to a queue, processes them in the background, and allows you to track the status via a simple API and UI.
+BatchLab is a cloud‑native async batch processing system. Users submit batch jobs through an API and a simple UI. Jobs are queued, processed asynchronously, and their status can be tracked end‑to‑end.
 
-The focus is on **functional delivery in 4 days**, with a clear architecture, controlled scope, and exclusive use of **managed services**, compatible with GitHub Codespaces.
+The goal is **real delivery in 4 consecutive days**, with strict scope control, clear ownership, and managed services only (Codespaces‑friendly).
 
 ---
 
-## Definitive Stack
+## Final Stack
 
 ### Backend
 
-* .NET 8 (ASP.NET Core Minimal API)
+* .NET 8 – ASP.NET Core Minimal API
 * AWS SDK for .NET
 * Messaging: AWS SQS (Standard Queue)
 * Persistence: AWS DynamoDB
 
 ### Frontend
 
-* Angular (standalone, no Nx)
-* Communication via HTTP with the API
+* Angular (standalone app, no Nx)
 
 ### Environment
 
 * GitHub Codespaces
-* Local execution via `dotnet run` and `ng serve`
+* Run via `dotnet run` and `ng serve`
 * Configuration via environment variables
 
-### Outside the technical scope
+### Explicitly Out of Scope
 
-* Docker as a development requirement
-* Caching (Redis)
-* Authentication/authorization
-* Advanced observability
-* Infrastructure as code
+* Authentication / Authorization
+* Redis / caching
+* Observability stack
+* Infrastructure as Code
+* Docker as a dev requirement
 
 ---
 
@@ -42,158 +41,188 @@ The focus is on **functional delivery in 4 days**, with a clear architecture, co
 
 ### What the system does
 
-1. User creates a batch processing job
-2. API registers the job as `Queued`
+1. User submits a batch job
+2. API stores job as `Queued`
 3. API publishes message to SQS
-4. Worker consumes The message:
+4. Worker consumes and processes the job
+5. Job status is updated
+6. UI displays job status
 
-5. Simulated processing is executed
-6. Job status is updated
-7. UI displays the status
+This flow **must work end‑to‑end** for the project to be considered delivered.
 
 ---
 
-## Minimum Acceptable MVP
+## MVP – Non‑Negotiable Scope
 
 ### Backend
 
-* `POST /jobs` – creates a job
-* `GET /jobs/{id}` – queries status
-* Publication to SQS
-* Worker consuming messages
-* Status persistence in DynamoDB
+* `POST /jobs` – create a batch job
+* `GET /jobs/{id}` – retrieve job status
+* Publish messages to SQS
+* Background worker consuming SQS
+* Persist job status in DynamoDB
 
 ### Frontend
 
-* Simple form for job creation
-* Job status visualization
+* Simple form to create a job
+* Status view for a single job
 
 ### MVP Success Criteria
 
-* Functional end-to-end flow without manual intervention
+* Full async flow works without manual intervention
 
 ---
 
-## Division of Responsibilities
+## Architecture Layers
 
-### Daniel
+### Layer 1 – Core (Must Not Fail)
 
-* General architecture
-* .NET Backend
-* Integration with SQS
-* Processing worker
-* Persistence in DynamoDB
-* Ensuring Layer 1 functionality
-
-### Gabriel
-
-* UI in Angular
-* UI ↔ API integration
-* Visual structure and user flow
-* Occasional support On the backend
-
-Explicit rule: each layer owns its own layer. Cross-layer changes only with alignment.
-
----
-
-## Layered Organization
-
-### Layer 1 – Mandatory Core
-
-* API receives job
-* Message published to SQS
-* Worker consumes
-* Processing log
+* API accepts job requests
+* Message is published to SQS
+* Worker consumes message
+* Processing is logged
 
 ### Layer 2 – Demonstrable Value
 
-* Status persistence
-* Job query
-* Minimal UI
+* Job status persisted in DynamoDB
+* Status retrieval endpoint
+* Minimal UI connected to API
 
-### Layer 3 – Extras (only if there's time left)
+### Layer 3 – Optional Extras (Only if Time Remains)
 
-* UX improvements
-* Simple retry
-* Job pagination/listing
+* Better UX
+* Retry logic
+* Job listing
 
 ---
 
-## Closed Plan per Day
+## Roles & Ownership
 
-### Day 1 – Proof of Viability
+### Daniel – Backend & Async Core
 
-**Objectives**
+* Overall architecture
+* .NET API
+* SQS integration
+* Worker implementation
+* DynamoDB persistence
+* Owner of Layer 1 (core reliability)
 
-* Repository created
-* API uploaded to Codespaces
-* SQS queue created
-* Message published and consumed
+### Gabriel – Frontend & Integration
 
-**Successful Day Criteria**
+* Angular UI
+* UI ↔ API integration
+* User flow and basic UX
+* Backend support when needed
 
-* Console confirms: API → SQS → Worker
+Rule: **each person owns their layer**. Cross‑layer changes require alignment.
 
-**Cutoff Point**
+---
 
-* If DynamoDB is delayed, status in memory
+## 4‑Day Execution Plan (With Parallel Work)
+
+### Day 1 – Feasibility & Skeleton
+
+**Daniel**
+
+* Create repository structure
+* Bootstrap .NET Minimal API
+* Configure AWS SDK access
+* Create SQS queue
+* Publish and consume a test message (logs only)
+
+**Gabriel**
+
+* Bootstrap Angular project
+* Create basic layout (form + status view)
+* Define API contract with Daniel
+
+**Success Criteria**
+
+* API → SQS → Worker flow visible in logs
+
+**Cut Line**
+
+* If persistence blocks progress, keep job status in memory
 
 ---
 
 ### Day 2 – Functional Core
 
-**Objectives**
+**Daniel**
 
-* DynamoDB working
-* Persistent status
-* Complete endpoints
+* Create DynamoDB table
+* Persist job status
+* Implement `POST /jobs` and `GET /jobs/{id}`
+* Connect worker processing to status updates
 
-**Successful Day Criteria**
+**Gabriel**
 
-* Complete flow via Postman/curl
+* Implement job creation UI
+* Connect UI to `POST /jobs`
+* Mock status responses if backend lags
 
-**Cutoff Point**
+**Success Criteria**
 
-* If UI is delayed, full focus on the backend
+* Full async flow works via Postman or curl
 
----
+**Cut Line**
 
-### Day 3 – UI and Stabilization
-
-**Objectives**
-
-* UI creates job
-* UI queries status
-* Basic error handling
-
-**Successful Day Criteria**
-
-* Functional demo without technical explanation
-
-**Cutoff Point**
-
-* Ugly UI is acceptable; Broken UI not included
+* If UI falls behind, backend stability takes priority
 
 ---
 
-### Day 4 – Finalization and Delivery
+### Day 3 – UI Integration & Stabilization
 
-**Objectives**
+**Daniel**
 
-* Clear README
-* Execution script
-* Minor code cleanup
-* Demo preparation
+* Error handling (basic)
+* Idempotency safeguards (minimal)
+* Worker stability checks
 
-**Successful Day Criteria**
+**Gabriel**
 
-* Someone clones the repository and runs it on Codespaces
+* Implement job status polling
+* Display job state transitions
+* Basic UX cleanup
+
+**Success Criteria**
+
+* Demo works end‑to‑end without explanation
+
+**Cut Line**
+
+* UI polish is optional; correctness is not
 
 ---
 
-## Expected Result
+### Day 4 – Cleanup & Delivery
 
-* A functional and demonstrable MVP
-* Clear asynchronous processing architecture
-* Real-world learning in messaging and cloud
-* Delivery completed in 4 days without overengineering
+**Daniel**
+
+* Code cleanup
+* Configuration review
+* Sanity testing
+
+**Gabriel**
+
+* Final UI cleanup
+* Demo flow preparation
+
+**Joint Tasks**
+
+* Write README
+* Document setup steps
+* Prepare demo narrative
+
+**Success Criteria**
+
+* A third party can run the project in Codespaces and understand it
+
+---
+
+## Expected Outcome
+
+* A working async batch processing MVP
+* Clear async architecture using managed services
+* Real, transferable backend experience
+* A finished artifact, not a prototype sketch

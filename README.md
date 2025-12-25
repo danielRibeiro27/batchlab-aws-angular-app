@@ -348,12 +348,10 @@ Frontend/src/app/
 - **Frontend**: Use Vitest for unit tests
   ```typescript
   describe('JobService', () => {
-    it('should create a job', (done) => {
+    it('should create a job', async () => {
       const request = { name: 'Test', payload: '{}' };
-      service.createJob(request).subscribe(response => {
-        expect(response.id).toBeDefined();
-        done();
-      });
+      const response = await firstValueFrom(service.createJob(request));
+      expect(response.id).toBeDefined();
     });
   });
   ```

@@ -279,20 +279,20 @@ Frontend/src/app/
 
 #### Templates
 - **Use Angular 17+ Syntax**: Prefer new control flow syntax
-  ```typescript
-  // Conditionals
+  ```html
+  <!-- Conditionals -->
   @if (job) {
     <div>{{ job.status }}</div>
   } @else {
     <div>Loading...</div>
   }
   
-  // Loops
+  <!-- Loops -->
   @for (job of jobs; track job.id) {
     <app-job-item [job]="job" />
   }
   
-  // Switch
+  <!-- Switch -->
   @switch (job.status) {
     @case ('QUEUED') { <span>Queued</span> }
     @case ('PROCESSING') { <span>Processing</span> }

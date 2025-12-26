@@ -1,4 +1,4 @@
-namespace BatchlabApi.Service.Interface
+namespace BatchLabApi.Infrastructure.Interface
 {
     public interface IMessageBus
     {

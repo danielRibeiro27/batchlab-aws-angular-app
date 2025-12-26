@@ -314,13 +314,13 @@ Frontend/src/app/
   - `test:` - Adding or updating tests
   - `chore:` - Maintenance tasks
 
-  Examples:
-  ```
-  feat: add job status polling to frontend
-  fix: handle null response in job service
-  refactor: extract message publishing to separate service
-  docs: update README with deployment instructions
-  ```
+    Examples:
+    ```
+    feat: add job status polling to frontend
+    fix: handle null response in job service
+    refactor: extract message publishing to separate service
+    docs: update README with deployment instructions
+    ```
 
 #### Code Review
 - **Pull Request Reviews**: All code must be reviewed via PRs

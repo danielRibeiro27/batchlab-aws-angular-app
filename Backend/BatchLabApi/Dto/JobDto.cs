@@ -1,4 +1,4 @@
-namespace BatchlabApi.Dto
+namespace BatchLabApi.Dto
 {
     public record JobDto
     {

@@ -1,8 +1,8 @@
 using Amazon.SQS;
 using Amazon.SQS.Model;
-using BatchlabApi.Service.Interface;
+using BatchLabApi.Infrastructure.Interface;
 
-namespace BatchlabApi.Service.Implementation
+namespace BatchLabApi.Infrastructure.Implementation
 {
     public class SQSMessageBus : IMessageBus
     {

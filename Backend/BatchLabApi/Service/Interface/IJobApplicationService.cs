@@ -1,4 +1,4 @@
-using BatchlabApi.Dto;
+using BatchLabApi.Dto;
 
 namespace BatchLabApi.Service.Interface
 {
@@ -7,7 +7,5 @@ namespace BatchLabApi.Service.Interface
         Task<bool> CreateAsync(JobDto job);
         JobDto Get(int id);
         IEnumerable<JobDto> GetAll();
-        void Update(JobDto job);
-        void Delete(int id);
     }
 }

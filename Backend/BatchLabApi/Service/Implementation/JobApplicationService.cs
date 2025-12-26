@@ -1,22 +1,21 @@
-using BatchlabApi.Dto;
-using BatchlabApi.Service.Implementation;
-using BatchlabApi.Service.Interface;
+using BatchLabApi.Dto;
 using BatchLabApi.Service.Interface;
+using BatchLabApi.Infrastructure.Interface;
 
-namespace BatchlabApi.Service.Implementation
+namespace BatchLabApi.Service.Implementation
 {
     public class JobApplicationService : IJobApplicationService
     {
-        private readonly IMessageBus _messageBus;
-        public JobApplicationService(IMessageBus messageBus)
+        private readonly IMessageBus? _messageBus;
+        public JobApplicationService(IMessageBus? messageBus = null)
         {
             _messageBus = messageBus;
         }
 
         public async Task<bool> CreateAsync(JobDto job)
         {
-            SQSMessageBus messageBus = new();
-            return await messageBus.SendMessageAsync("HELLO_WORD_MESSAGE");
+            Infrastructure.Implementation.SQSMessageBus messageBus = new();
+            return await messageBus.SendMessageAsync(job.Desc);
         }
 
         public void Delete(int id)

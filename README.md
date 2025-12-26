@@ -37,7 +37,334 @@ The final artifact is intentionally simple, but architecturally honest, aiming t
 
 ---
 
-## 3. Explicitly Out of Scope (Deliberate Cuts)
+## 3. Coding Conventions
+
+This section outlines the coding standards and best practices for both backend (.NET) and frontend (Angular) development.
+
+### 3.1 Backend (.NET) Conventions
+
+#### Naming Conventions
+- **Classes, Interfaces, Methods (public), Properties**: `PascalCase`
+  - Examples: `JobService`, `IJobRepository`, `CreateJobAsync`, `JobId`
+- **Interfaces**: Prefix with `I`
+  - Example: `IJobService`, `IMessagePublisher`
+- **Variables (local), Parameters**: `camelCase`
+  - Examples: `jobRequest`, `cancellationToken`, `jobId`
+
+#### Folder Structure
+```
+Backend/
+├── Api/                    # Endpoints and controllers
+├── Services/               # Business logic
+├── Models/                 # DTOs and entities
+├── Infrastructure/         # AWS integrations (SQS, DynamoDB)
+│   ├── Messaging/         # SQS publishers and consumers
+│   └── Persistence/       # DynamoDB repositories
+├── Workers/               # Background workers
+└── Configuration/         # Settings and DI setup
+```
+
+#### Code Principles
+- **Minimal APIs**: Use minimal API syntax for endpoint definitions
+  ```csharp
+  app.MapPost("/jobs", async (CreateJobRequest request, IJobService service) => 
+      await service.CreateJobAsync(request));
+  
+  app.MapGet("/jobs/{id}", async (Guid id, IJobService service) =>
+      await service.GetJobStatusAsync(id));
+  ```
+
+- **Dependency Injection**: All services must be registered in DI container
+  ```csharp
+  builder.Services.AddSingleton<IJobService, JobService>();
+  builder.Services.AddScoped<IJobRepository, DynamoDbJobRepository>();
+  ```
+
+- **Async/Await**: Always use async operations for I/O-bound work
+  ```csharp
+  public async Task<JobStatusResponse> GetJobStatusAsync(Guid jobId, CancellationToken ct)
+  {
+      var job = await _repository.GetByIdAsync(jobId, ct);
+      return new JobStatusResponse(job.Id, job.Status, job.CreatedAt);
+  }
+  ```
+
+- **Records for DTOs**: Use records for immutable data transfer objects
+  ```csharp
+  public record CreateJobRequest(string Name, string Payload);
+  public record JobStatusResponse(Guid Id, string Status, DateTime CreatedAt);
+  public record JobMessage(Guid JobId);
+  ```
+
+#### Error Handling
+- **Result Pattern**: Return results instead of throwing exceptions for expected errors
+- **ProblemDetails**: Use standard ProblemDetails for API error responses
+  ```csharp
+  if (!validationResult.IsValid)
+      return Results.ValidationProblem(validationResult.Errors);
+  ```
+- **Logging**: Always log with context (JobId, UserId, etc.)
+  ```csharp
+  _logger.LogInformation("Processing job {JobId}", jobId);
+  _logger.LogError(ex, "Failed to process job {JobId}", jobId);
+  ```
+
+#### SQS Messaging
+- **Minimal Messages**: Keep messages small with only essential IDs
+  ```csharp
+  var message = new JobMessage(jobId);
+  await _sqsPublisher.PublishAsync(message, cancellationToken);
+  ```
+- **JSON Serialization**: Use `System.Text.Json` for message serialization
+- **Long Polling**: Workers should use long polling (WaitTimeSeconds = 20)
+
+#### DynamoDB
+- **Naming**: Use PascalCase for table names and attributes
+  - Table: `Jobs`, Attributes: `JobId`, `Status`, `CreatedAt`
+- **PK/SK Pattern**: Use partition key (PK) and sort key (SK) pattern when needed
+- **Attributes**: Keep attribute names consistent with C# property names
+  ```csharp
+  var item = new Dictionary<string, AttributeValue>
+  {
+      ["JobId"] = new AttributeValue { S = job.Id.ToString() },
+      ["Status"] = new AttributeValue { S = job.Status },
+      ["CreatedAt"] = new AttributeValue { S = job.CreatedAt.ToString("o") }
+  };
+  ```
+
+---
+
+### 3.2 Frontend (Angular) Conventions
+
+#### Naming Conventions
+- **Files and Selectors**: `kebab-case`
+  - Examples: `job-form.component.ts`, `job-status.component.ts`
+  - Selector: `app-job-form`, `app-job-status`
+- **Classes and Interfaces**: `PascalCase`
+  - Examples: `JobFormComponent`, `JobService`, `Job`, `JobStatusResponse`
+- **Variables, Methods, Properties**: `camelCase`
+  - Examples: `jobId`, `submitJob()`, `isLoading`
+
+#### Folder Structure
+```
+Frontend/src/app/
+├── core/                   # Singletons (services, guards, interceptors)
+│   ├── services/
+│   ├── models/
+│   └── interceptors/
+├── features/              # Feature modules
+│   ├── job-submission/
+│   └── job-status/
+├── shared/                # Shared components
+└── app.component.ts
+```
+
+#### Code Principles
+- **Standalone Components**: Use standalone components (Angular 14+)
+  ```typescript
+  @Component({
+    selector: 'app-job-form',
+    standalone: true,
+    imports: [CommonModule, ReactiveFormsModule],
+    templateUrl: './job-form.component.html',
+    changeDetection: ChangeDetectionStrategy.OnPush
+  })
+  export class JobFormComponent {
+    // Component logic
+  }
+  ```
+
+- **Reactive Forms**: Use Reactive Forms for form handling
+  ```typescript
+  jobForm = new FormGroup({
+    name: new FormControl('', [Validators.required]),
+    payload: new FormControl('', [Validators.required])
+  });
+  ```
+
+- **Observables with RxJS**: Use Observables for async operations
+  ```typescript
+  submitJob(): void {
+    this.jobService.createJob(this.jobForm.value)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(response => {
+        this.router.navigate(['/status', response.id]);
+      });
+  }
+  ```
+
+- **OnPush Change Detection**: Use OnPush strategy for better performance
+  ```typescript
+  changeDetection: ChangeDetectionStrategy.OnPush
+  ```
+
+#### Services
+- **ProvidedIn Root**: Services should be provided in root for singleton behavior
+  ```typescript
+  @Injectable({
+    providedIn: 'root'
+  })
+  export class JobService {
+    // Service logic
+  }
+  ```
+
+- **Single Responsibility**: Each service should have a single, well-defined purpose
+- **Return Observables**: Service methods should return Observables
+  ```typescript
+  getJobStatus(id: string): Observable<JobStatusResponse> {
+    return this.http.get<JobStatusResponse>(`/api/jobs/${id}`);
+  }
+  ```
+
+#### Components
+- **One Component Per File**: Each component in its own file
+- **Maximum 400 Lines**: Keep components under 400 lines; refactor if larger
+- **Inline Templates**: Only use inline templates if less than 10 lines
+  ```typescript
+  // Inline template (only if < 10 lines)
+  template: `<div>{{ job.status }}</div>`
+  
+  // Separate file (preferred for > 10 lines)
+  templateUrl: './job-status.component.html'
+  ```
+
+#### Polling Strategy
+- **interval() with switchMap()**: Use RxJS interval for polling
+  ```typescript
+  private pollJobStatus(id: string): void {
+    interval(5000).pipe(
+      switchMap(() => this.jobService.getJobStatus(id)),
+      takeUntil(this.destroy$)
+    ).subscribe(status => {
+      this.jobStatus.set(status);
+      if (status.status === 'COMPLETED' || status.status === 'FAILED') {
+        this.destroy$.next();
+      }
+    });
+  }
+  ```
+
+- **Always use takeUntil()**: Prevent memory leaks by completing subscriptions
+  ```typescript
+  private destroy$ = new Subject<void>();
+  
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+  ```
+
+#### Typing
+- **Always Type Returns**: Type all method return values
+  ```typescript
+  getJob(id: string): Observable<Job> { }
+  calculateTotal(items: Item[]): number { }
+  ```
+- **Type Public Properties**: Always type public properties
+  ```typescript
+  jobStatus: JobStatusResponse | null = null;
+  isLoading: boolean = false;
+  ```
+- **Avoid `any`**: Never use `any` type; use `unknown` if type is truly unknown
+- **Use Interfaces**: Define interfaces for all data structures
+  ```typescript
+  export interface Job {
+    id: string;
+    name: string;
+    status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+    createdAt: Date;
+  }
+  ```
+
+#### Templates
+- **Use Angular 17+ Syntax**: Prefer new control flow syntax
+  ```html
+  <!-- Conditionals -->
+  @if (job) {
+    <div>{{ job.status }}</div>
+  } @else {
+    <div>Loading...</div>
+  }
+  
+  <!-- Loops -->
+  @for (job of jobs; track job.id) {
+    <app-job-item [job]="job" />
+  }
+  
+  <!-- Switch -->
+  @switch (job.status) {
+    @case ('QUEUED') { <span>Queued</span> }
+    @case ('PROCESSING') { <span>Processing</span> }
+    @case ('COMPLETED') { <span>Completed</span> }
+    @default { <span>Unknown</span> }
+  }
+  ```
+
+---
+
+### 3.3 General Conventions
+
+#### Versioning
+- **Conventional Commits**: Follow Conventional Commits specification
+  - `feat:` - New features
+  - `fix:` - Bug fixes
+  - `refactor:` - Code refactoring
+  - `docs:` - Documentation changes
+  - `test:` - Adding or updating tests
+  - `chore:` - Maintenance tasks
+
+  Examples:
+  ```
+  feat: add job status polling to frontend
+  fix: handle null response in job service
+  refactor: extract message publishing to separate service
+  docs: update README with deployment instructions
+  ```
+
+#### Code Review
+- **Pull Request Reviews**: All code must be reviewed via PRs
+- **Minimum 1 Approval**: At least one approval required before merge
+- **CI Must Pass**: All CI checks must pass before merge
+- **Small PRs**: Keep PRs focused and small for easier review
+
+#### Testing
+- **Backend**: Use xUnit or NUnit for unit and integration tests
+  ```csharp
+  [Fact]
+  public async Task CreateJobAsync_ShouldReturnJobId()
+  {
+      // Arrange
+      var request = new CreateJobRequest("TestJob", "{}");
+      
+      // Act
+      var result = await _jobService.CreateJobAsync(request);
+      
+      // Assert
+      Assert.NotEqual(Guid.Empty, result.JobId);
+  }
+  ```
+
+- **Frontend**: Use Vitest for unit tests
+  ```typescript
+  describe('JobService', () => {
+    it('should create a job', async () => {
+      const request = { name: 'Test', payload: '{}' };
+      const response = await firstValueFrom(service.createJob(request));
+      expect(response.id).toBeDefined();
+    });
+  });
+  ```
+
+- **Critical Path Coverage**: Minimum test coverage for critical paths
+  - Job creation flow
+  - Status updates
+  - Message publishing and consumption
+  - Error handling scenarios
+
+---
+
+## 4. Explicitly Out of Scope (Deliberate Cuts)
 
 These are **conscious scope decisions**, not omissions:
 - Authentication / Authorization
@@ -49,7 +376,7 @@ These are **conscious scope decisions**, not omissions:
 
 ---
 
-## 4. What the System Does (End‑to‑End)
+## 5. What the System Does (End‑to‑End)
 
 ### High‑Level Consumption Flow
 
@@ -67,7 +394,7 @@ This full loop must work for the project to be considered delivered.
 
 ---
 
-## 5. MVP – Non‑Negotiable Scope
+## 6. MVP – Non‑Negotiable Scope
 
 ### Backend
 - `POST /jobs` – create a batch job
@@ -86,7 +413,7 @@ This full loop must work for the project to be considered delivered.
 
 ---
 
-## 6. Architecture Layers
+## 7. Architecture Layers
 
 ### Layer 1 – Core (Must Not Fail)
 - API accepts job requests
@@ -106,7 +433,7 @@ This full loop must work for the project to be considered delivered.
 
 ---
 
-## 7. Roles & Ownership
+## 8. Roles & Ownership
 
 ### Daniel – Backend & Async Core
 - Overall architecture
@@ -126,7 +453,7 @@ This full loop must work for the project to be considered delivered.
 
 ---
 
-## 8. Scalability – Backend
+## 9. Scalability – Backend
 
 ### Throughput Targets
 - Designed to handle **~1,000 requests/second** at peak
@@ -146,7 +473,7 @@ This full loop must work for the project to be considered delivered.
 
 ---
 
-## 9. Scalability – Frontend
+## 10. Scalability – Frontend
 
 ### Polling Strategy
 - No WebSockets or push mechanisms
@@ -161,7 +488,7 @@ Frontend is not the bottleneck; API and storage are.
 
 ---
 
-## 10. Cost Model (Order of Magnitude)
+## 11. Cost Model (Order of Magnitude)
 
 ### Assumptions
 - 1 job / second / active user
@@ -192,7 +519,7 @@ Frontend is not the bottleneck; API and storage are.
 
 ---
 
-## 11. 4‑Day Execution Plan (Parallel Work)
+## 12. 4‑Day Execution Plan (Parallel Work)
 
 ### Day 1 – Feasibility & Skeleton
 
@@ -251,7 +578,7 @@ Frontend is not the bottleneck; API and storage are.
 
 ---
 
-## 12. Recruiter Value Proposition
+## 13. Recruiter Value Proposition
 
 This project demonstrates:
 - Async system design
@@ -263,7 +590,7 @@ This project demonstrates:
 
 BatchLab is not a tutorial. It is a **real engineering artifact delivered under constraints**.
 
-## 13. Tools
+## 14. Tools
 
 - System Designing: https://excalidraw.com/#json=5q1900ZLeO1h97Tdn99rS,YCkLMXxGnJbX4AlIcp7Y-Q
 

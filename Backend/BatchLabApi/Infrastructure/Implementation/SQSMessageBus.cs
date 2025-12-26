@@ -10,13 +10,13 @@ namespace BatchLabApi.Infrastructure.Implementation
         {
         }
 
-        public async Task<bool> SendMessageAsync(string message)
+        public async Task<bool> PublishAsync(string message)
         {
             try
             {
                 AmazonSQSClient client = new(Amazon.RegionEndpoint.SAEast1);
                 var queueUrl = await client.GetQueueUrlAsync("BatchlabJobs");
-                Console.WriteLine(queueUrl.QueueUrl);
+                Console.WriteLine("Queue: " + queueUrl.QueueUrl);
 
                 var sendMessageRequest = new SendMessageRequest()
                 {
@@ -24,7 +24,7 @@ namespace BatchLabApi.Infrastructure.Implementation
                     MessageBody = message
                 };
                 var response = await client.SendMessageAsync(sendMessageRequest);
-                Console.WriteLine($"Message sent with ID: {response.MessageId}");
+                Console.WriteLine("Message sent with ID: " + response.MessageId);
                 return response.HttpStatusCode == System.Net.HttpStatusCode.OK;
             }
             catch (Exception ex)

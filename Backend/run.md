@@ -1,0 +1,9 @@
+export AWS_ACCESS_KEY_ID=$BATCHLAB_API_AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY=$BATCHLAB_API_AWS_SECRET_ACCESS_KEY
+
+dotnet run --project BatchLabApi/BatchLabApi.csproj
+|
+export $AWS_ACCESS_KEY_ID=$BATCHLAB_WORKER_AWS_ACCESS_KEY_ID\
+export $AWS_SECRET_ACCESS_KEY=$BATCHLAB_WORKER_AWS_SECRET_ACCESS_KEY\
+
+dotnet run --project BatchLabWorker/BatchLabWorker.csproj

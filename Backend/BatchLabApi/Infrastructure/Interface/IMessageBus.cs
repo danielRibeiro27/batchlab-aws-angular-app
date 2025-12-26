@@ -2,6 +2,6 @@ namespace BatchLabApi.Infrastructure.Interface
 {
     public interface IMessageBus
     {
-        Task<bool> SendMessageAsync(string message);
+        Task<bool> PublishAsync(string message);
     }
 }

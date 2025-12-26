@@ -15,7 +15,7 @@ namespace BatchLabApi.Service.Implementation
         public async Task<bool> CreateAsync(JobDto job)
         {
             Infrastructure.Implementation.SQSMessageBus messageBus = new();
-            return await messageBus.SendMessageAsync(job.Desc);
+            return await messageBus.PublishAsync(job.Desc);
         }
 
         public void Delete(int id)

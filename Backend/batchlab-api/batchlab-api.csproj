@@ -7,4 +7,8 @@
     <RootNamespace>BatchlabApi</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.SQS" Version="4.0.2.8" />
+  </ItemGroup>
+
 </Project>

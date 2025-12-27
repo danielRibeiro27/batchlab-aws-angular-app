@@ -16,6 +16,7 @@ namespace BatchLabApi.Infrastructure.Implementation
             {
                 //TO-DO: Move AWS config to appsettings.json
                 //TO-DO: Use interface for AWS client?
+                //TO-DO: Dispose AmazonSQSClient properly (implement using statement or IDisposable pattern)
                 AmazonSQSClient client = new(Amazon.RegionEndpoint.SAEast1);
                 var queueUrl = await client.GetQueueUrlAsync("BatchlabJobs"); 
                 Console.WriteLine("Queue: " + queueUrl.QueueUrl);

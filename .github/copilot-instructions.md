@@ -30,15 +30,18 @@ dotnet run
 #### Running Worker
 ```bash
 cd Backend/batchlab-api
-# Worker may run as a separate process or background service
+# The Worker may be part of the same project or a separate project
+# Currently shares the same directory as the API
 # Check Program.cs for the actual implementation
 dotnet run --launch-profile Worker  # If using separate launch profile
 # Or run as a separate project when available
 ```
 
 **For development**, run both in separate terminal sessions:
-- Terminal 1: API (`dotnet run`)
+- Terminal 1: API (`dotnet run` or `dotnet run --launch-profile Api`)
 - Terminal 2: Worker (check actual implementation in Program.cs for correct command)
+
+**Note**: The API and Worker may share the same codebase but run as separate processes to handle different responsibilities (API endpoints vs. SQS message consumption).
 
 #### Testing
 ```bash
@@ -69,6 +72,7 @@ AWS_REGION=us-east-1  # Or your preferred region
 
 # SQS Configuration
 AWS_SQS_QUEUE_URL=https://sqs.<region>.amazonaws.com/<account-id>/<queue-name>
+# Example: https://sqs.us-east-1.amazonaws.com/123456789012/batchlab-queue
 
 # DynamoDB Configuration
 AWS_DYNAMODB_TABLE_NAME=Jobs
@@ -92,8 +96,9 @@ For different environments (Development, Staging, Production), configure AWS cre
 ```csharp
 // Default credential chain - automatically uses environment variables,
 // IAM roles, or AWS credentials file
-var sqsClient = new AmazonSQSClient(RegionEndpoint.USEast1);
-var dynamoDbClient = new AmazonDynamoDBClient(RegionEndpoint.USEast1);
+var region = Environment.GetEnvironmentVariable("AWS_REGION") ?? "us-east-1";
+var sqsClient = new AmazonSQSClient(RegionEndpoint.GetBySystemName(region));
+var dynamoDbClient = new AmazonDynamoDBClient(RegionEndpoint.GetBySystemName(region));
 ```
 
 **Alternative** (only for specific scenarios where explicit credentials are needed):

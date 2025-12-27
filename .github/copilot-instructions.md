@@ -30,12 +30,15 @@ dotnet run
 #### Running Worker
 ```bash
 cd Backend/batchlab-api
-dotnet run --worker  # Or separate worker project when available
+# Worker may run as a separate process or background service
+# Check Program.cs for the actual implementation
+dotnet run --launch-profile Worker  # If using separate launch profile
+# Or run as a separate project when available
 ```
 
 **For development**, run both in separate terminal sessions:
 - Terminal 1: API (`dotnet run`)
-- Terminal 2: Worker (`dotnet run --worker`)
+- Terminal 2: Worker (check actual implementation in Program.cs for correct command)
 
 #### Testing
 ```bash
@@ -65,7 +68,7 @@ AWS_SECRET_ACCESS_KEY=your_secret_access_key
 AWS_REGION=us-east-1  # Or your preferred region
 
 # SQS Configuration
-AWS_SQS_QUEUE_URL=https://sqs.{region}.amazonaws.com/{account-id}/{queue-name}
+AWS_SQS_QUEUE_URL=https://sqs.<region>.amazonaws.com/<account-id>/<queue-name>
 
 # DynamoDB Configuration
 AWS_DYNAMODB_TABLE_NAME=Jobs
@@ -85,25 +88,27 @@ For different environments (Development, Staging, Production), configure AWS cre
 
 ### AWS SDK Configuration
 
-When initializing AWS SDK services in code:
+**Recommended**: Use default AWS credential chain (best for Codespaces and production):
 ```csharp
-// SQS Client
+// Default credential chain - automatically uses environment variables,
+// IAM roles, or AWS credentials file
+var sqsClient = new AmazonSQSClient(RegionEndpoint.USEast1);
+var dynamoDbClient = new AmazonDynamoDBClient(RegionEndpoint.USEast1);
+```
+
+**Alternative** (only for specific scenarios where explicit credentials are needed):
+```csharp
+// ⚠️ WARNING: Never hard-code credentials in source code
+// Only use when loading from secure configuration
 var sqsClient = new AmazonSQSClient(
     new BasicAWSCredentials(accessKey, secretKey),
     RegionEndpoint.GetBySystemName(region)
 );
 
-// DynamoDB Client
 var dynamoDbClient = new AmazonDynamoDBClient(
     new BasicAWSCredentials(accessKey, secretKey),
     RegionEndpoint.GetBySystemName(region)
 );
-```
-
-Or use default credential chain (recommended for Codespaces):
-```csharp
-var sqsClient = new AmazonSQSClient(RegionEndpoint.USEast1);
-var dynamoDbClient = new AmazonDynamoDBClient(RegionEndpoint.USEast1);
 ```
 
 ## General Coding Principles

@@ -16,6 +16,7 @@ namespace BatchLabApi.Infrastructure.Implementation
             {
                 //TO-DO: Move AWS config to appsettings.json
                 //TO-DO: Use interface for AWS client?
+                //TO-DO: AmazonSQSClient should be created once and reused (singleton pattern) as it's thread-safe. Creating a new instance per message is inefficient and can lead to resource exhaustion.
                 AmazonSQSClient client = new(Amazon.RegionEndpoint.SAEast1);
                 var queueUrl = await client.GetQueueUrlAsync("BatchlabJobs"); 
                 Console.WriteLine("Queue: " + queueUrl.QueueUrl);

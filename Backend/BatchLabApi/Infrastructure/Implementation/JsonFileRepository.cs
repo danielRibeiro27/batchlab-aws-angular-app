@@ -28,6 +28,8 @@ namespace BatchLabApi.Infrastructure.Implementation
             await WriteAllAsync(items);
         }
 
+        // TODO: Add thread-safety mechanisms (e.g., locking) to protect concurrent read/write operations
+        // and prevent race conditions or data corruption in multi-threaded environments.
         private async Task<List<T>> ReadAllAsync()
         {
             var json = await File.ReadAllTextAsync(_filePath);

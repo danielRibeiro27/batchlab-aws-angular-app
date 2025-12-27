@@ -16,11 +16,30 @@ The system demonstrates production-grade async thinking through a simple end-to-
 ## Build and Test Commands
 
 ### Backend (.NET)
+
+**Important**: The backend consists of both an API and a Worker that consume from SQS. Both need to run simultaneously for the full async flow to work.
+
+#### Running API
 ```bash
 cd Backend/batchlab-api
 dotnet restore
 dotnet build
 dotnet run
+```
+
+#### Running Worker
+```bash
+cd Backend/batchlab-api
+dotnet run --worker  # Or separate worker project when available
+```
+
+**For development**, run both in separate terminal sessions:
+- Terminal 1: API (`dotnet run`)
+- Terminal 2: Worker (`dotnet run --worker`)
+
+#### Testing
+```bash
+cd Backend/batchlab-api
 dotnet test  # When tests are added
 ```
 
@@ -31,6 +50,60 @@ npm install
 npm run build
 npm start        # Runs ng serve
 npm test         # Runs Vitest tests
+```
+
+## AWS Configuration
+
+### Environment Variables
+
+AWS credentials and configuration must be set individually for each environment. Required environment variables:
+
+```bash
+# AWS Credentials
+AWS_ACCESS_KEY_ID=your_access_key_id
+AWS_SECRET_ACCESS_KEY=your_secret_access_key
+AWS_REGION=us-east-1  # Or your preferred region
+
+# SQS Configuration
+AWS_SQS_QUEUE_URL=https://sqs.{region}.amazonaws.com/{account-id}/{queue-name}
+
+# DynamoDB Configuration
+AWS_DYNAMODB_TABLE_NAME=Jobs
+```
+
+### Environment-Specific Configuration
+
+For different environments (Development, Staging, Production), configure AWS credentials separately:
+
+**Development (appsettings.Development.json or environment variables)**:
+- Use development AWS account or local testing credentials
+- Configure with appropriate IAM permissions for SQS and DynamoDB
+
+**Production (appsettings.json or environment variables)**:
+- Use production AWS account with restricted IAM permissions
+- Follow principle of least privilege
+
+### AWS SDK Configuration
+
+When initializing AWS SDK services in code:
+```csharp
+// SQS Client
+var sqsClient = new AmazonSQSClient(
+    new BasicAWSCredentials(accessKey, secretKey),
+    RegionEndpoint.GetBySystemName(region)
+);
+
+// DynamoDB Client
+var dynamoDbClient = new AmazonDynamoDBClient(
+    new BasicAWSCredentials(accessKey, secretKey),
+    RegionEndpoint.GetBySystemName(region)
+);
+```
+
+Or use default credential chain (recommended for Codespaces):
+```csharp
+var sqsClient = new AmazonSQSClient(RegionEndpoint.USEast1);
+var dynamoDbClient = new AmazonDynamoDBClient(RegionEndpoint.USEast1);
 ```
 
 ## General Coding Principles

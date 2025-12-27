@@ -22,6 +22,7 @@ while(true){
     {
         foreach(var message in response.Messages)
         {
+            //TO-DO: Add error handling (try-catch) around message processing and deletion to prevent message loss and worker crashes
             Console.WriteLine("Message received: " + message.Body); //TO-DO: Process the message (e.g., perform the job)
             var deleteMessageRequest = new DeleteMessageRequest
             {

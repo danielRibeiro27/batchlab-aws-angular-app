@@ -50,6 +50,9 @@ namespace BatchLabApi.Infrastructure.Implementation
             }
         }
 
+        // TODO: This method uses reflection to access the "Id" property, which is fragile and could cause runtime exceptions
+        // if the type T doesn't have an "Id" property or if it has a different casing.
+        // Consider using a generic constraint or interface to enforce the presence of an Id property.
         private static string GetId(T item)
         {
             var idProperty = typeof(T).GetProperty("Id");

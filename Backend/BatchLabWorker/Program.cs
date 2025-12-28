@@ -29,9 +29,13 @@ while(true){
             //TO-DO: Add error handling (try-catch) around message processing and deletion to prevent message loss and worker crashes
             Console.WriteLine("Message received: " + message.Body); //TO-DO: Process the message (e.g., perform the job)
 
-            JobEntity jobEntity = JsonSerializer.Deserialize<JobEntity>(message.Body)!;
-            FakeProcessJob(jobEntity);
-            jobEntity.Status = "Completed";
+            var jobEntity = JsonSerializer.Deserialize<JobEntity>(message.Body);
+            if(jobEntity == null)
+            {
+                Console.WriteLine($"Error: Failed to deserialize message. Deleting invalid message.");
+                await DeleteMessageAsync(client, queueUrl.QueueUrl, message.ReceiptHandle, message.MessageId);
+                continue;
+            }
 
             var _repository = new JsonFileRepository("../BatchLabApi/jobs.json");
             var existingJob = await _repository.GetByIdAsync(jobEntity.Id.ToString());
@@ -40,31 +44,31 @@ while(true){
                 // Job should have been created by the API before being enqueued
                 // If it doesn't exist, this indicates a race condition or data inconsistency
                 Console.WriteLine($"Warning: Job {jobEntity.Id} not found in repository. Skipping processing.");
-                // Delete the message to prevent reprocessing
-                var deleteRequest = new DeleteMessageRequest
-                {
-                    QueueUrl = queueUrl.QueueUrl,
-                    ReceiptHandle = message.ReceiptHandle
-                };
-                await client.DeleteMessageAsync(deleteRequest);
-                Console.WriteLine("Message deleted: " + message.MessageId);
+                await DeleteMessageAsync(client, queueUrl.QueueUrl, message.ReceiptHandle, message.MessageId);
                 continue;
             }
+            
+            FakeProcessJob(jobEntity);
+            jobEntity.Status = "Completed";
             
             // Update the existing job with the completed status
             _ = await _repository.UpdateAsync(jobEntity);
             Console.WriteLine("Job updated in repository: " + jobEntity.Id);
 
-
-            var deleteMessageRequest = new DeleteMessageRequest
-            {
-                QueueUrl = queueUrl.QueueUrl,
-                ReceiptHandle = message.ReceiptHandle
-            };
-            await client.DeleteMessageAsync(deleteMessageRequest);
-            Console.WriteLine("Message deleted: " + message.MessageId);
+            await DeleteMessageAsync(client, queueUrl.QueueUrl, message.ReceiptHandle, message.MessageId);
         }
     }
+}
+
+static async Task DeleteMessageAsync(AmazonSQSClient client, string queueUrl, string receiptHandle, string messageId)
+{
+    var deleteMessageRequest = new DeleteMessageRequest
+    {
+        QueueUrl = queueUrl,
+        ReceiptHandle = receiptHandle
+    };
+    await client.DeleteMessageAsync(deleteMessageRequest);
+    Console.WriteLine("Message deleted: " + messageId);
 }
 
 static void FakeProcessJob(JobEntity jobData)

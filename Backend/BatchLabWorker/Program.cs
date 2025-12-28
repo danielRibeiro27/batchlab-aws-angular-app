@@ -34,16 +34,26 @@ while(true){
             jobEntity.Status = "Completed";
 
             var _repository = new JsonFileRepository("../BatchLabApi/jobs.json");
-            if(await _repository.GetByIdAsync(jobEntity.Id.ToString()) == null)
+            var existingJob = await _repository.GetByIdAsync(jobEntity.Id.ToString());
+            if(existingJob == null)
             {
-                await _repository.CreateAsync(jobEntity);
-                Console.WriteLine("Job created in repository: " + jobEntity.Id);
+                // Job should have been created by the API before being enqueued
+                // If it doesn't exist, this indicates a race condition or data inconsistency
+                Console.WriteLine($"Warning: Job {jobEntity.Id} not found in repository. Skipping processing.");
+                // Delete the message to prevent reprocessing
+                var deleteRequest = new DeleteMessageRequest
+                {
+                    QueueUrl = queueUrl.QueueUrl,
+                    ReceiptHandle = message.ReceiptHandle
+                };
+                await client.DeleteMessageAsync(deleteRequest);
+                Console.WriteLine("Message deleted: " + message.MessageId);
+                continue;
             }
-            else
-            {
-                _ = await _repository.UpdateAsync(jobEntity);
-                Console.WriteLine("Job updated in repository: " + jobEntity.Id);
-            }
+            
+            // Update the existing job with the completed status
+            _ = await _repository.UpdateAsync(jobEntity);
+            Console.WriteLine("Job updated in repository: " + jobEntity.Id);
 
 
             var deleteMessageRequest = new DeleteMessageRequest

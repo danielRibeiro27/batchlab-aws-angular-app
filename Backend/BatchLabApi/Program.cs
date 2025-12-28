@@ -44,7 +44,7 @@ app.MapGet("/jobs", async (IJobApplicationService _jobService) =>
         return Results.NotFound();
 
     // TODO: Refactor to use LINQ Select for more concise and idiomatic transformation
-    // Example: jobEntities.Select(e => new JobDto { ... }).ToList()
+    // Example: jobEntities.Select(e => new JobDto { Id = e.Id.ToString(), Description = e.Description, Status = e.Status, CreatedAt = e.CreatedAt }).ToList()
     var jobsDto = new List<JobDto>();
     foreach (var jobEntity in jobEntities)
     {

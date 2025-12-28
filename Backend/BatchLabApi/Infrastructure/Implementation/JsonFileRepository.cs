@@ -28,11 +28,12 @@ namespace BatchLabApi.Infrastructure.Implementation
             return items;
         }
 
-        public async Task CreateAsync(JobEntity entity)
+        public async Task<bool> CreateAsync(JobEntity entity)
         {
             var items = await ReadAllAsync();
             items.Add(entity);
             await WriteAllAsync(items);
+            return true;
         }
 
         // TODO: Add thread-safety mechanisms (e.g., locking) to protect concurrent read/write operations

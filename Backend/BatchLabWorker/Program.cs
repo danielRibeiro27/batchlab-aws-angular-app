@@ -30,21 +30,14 @@ while(true){
             Console.WriteLine("Message received: " + message.Body); //TO-DO: Process the message (e.g., perform the job)
 
             JobEntity jobEntity = JsonSerializer.Deserialize<JobEntity>(message.Body)!;
-            FakeProcessJob(jobEntity);
+            await FakeProcessJobAsync(jobEntity);
             jobEntity.Status = "Completed";
 
-            var _repository = new JsonFileRepository("../BatchLabApi/jobs.json");
-            if(await _repository.GetByIdAsync(jobEntity.Id.ToString()) == null)
-            {
-                await _repository.CreateAsync(jobEntity);
-                Console.WriteLine("Job created in repository: " + jobEntity.Id);
-            }
-            else
-            {
-                _ = await _repository.UpdateAsync(jobEntity);
-                Console.WriteLine("Job updated in repository: " + jobEntity.Id);
-            }
-
+            // var _repository = new JsonFileRepository("../BatchLabApi/jobs.json");
+            // _ = await _repository.UpdateAsync(jobEntity);
+            var _repository = new DynamoDBRepository(new Amazon.DynamoDBv2.AmazonDynamoDBClient());
+            await _repository.UpdateJobStatusAsync(jobEntity);
+            Console.WriteLine("Job updated in repository: " + jobEntity.Id);
 
             var deleteMessageRequest = new DeleteMessageRequest
             {
@@ -57,18 +50,18 @@ while(true){
     }
 }
 
-static void FakeProcessJob(JobEntity jobData)
+static async Task FakeProcessJobAsync(JobEntity jobData)
 {
     //Simulate job processing time
     // TODO: Use Random.Shared instead of creating new Random instance for better performance and thread safety
-    Random rand = new Random();
+    Random rand = Random.Shared;
     int processingTime = rand.Next(1000, 50000); //Random processing time between 1-50 seconds
     // TODO: Replace Thread.Sleep with await Task.Delay() to properly support async operations
-    System.Threading.Thread.Sleep(processingTime);
-    Console.WriteLine($"Processed job: {jobData} in {processingTime} ms");
-
+    await Task.Delay(processingTime);
     if(rand.NextDouble() < 0.1) //10% chance to simulate job failure
     {
         throw new Exception("Simulated job processing failure.");
     }
+
+    Console.WriteLine($"Processed job: {jobData} in {processingTime} ms");
 }

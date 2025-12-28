@@ -18,9 +18,10 @@ namespace BatchLabApi.Service.Implementation
             return true;
         }
 
-        public async Task<JobEntity> GetByIdAsync(string id)
+        public async Task<JobEntity?> GetByIdAsync(string id)
         {
-            return await _jobsRepository.GetByIdAsync(id);
+            JobEntity? job = await _jobsRepository.GetByIdAsync(id);
+            return job;
         }
 
         public async Task<List<JobEntity>> GetAllAsync()

@@ -9,7 +9,7 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "AWS_ACCESS_KEY_ID": "%BATCHLAB_API_AWS_ACCESS_KEY_ID%",
-        "AWS_SECRET_ACESS_KEY": "%BATCHLAB_API_AWS_SECRET_ACCESS_KEY%"
+        "AWS_SECRET_ACCESS_KEY": "%BATCHLAB_API_AWS_SECRET_ACCESS_KEY%"
       }
     },
     "https": {
@@ -20,7 +20,7 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "AWS_ACCESS_KEY_ID": "%BATCHLAB_API_AWS_ACCESS_KEY_ID%",
-        "AWS_SECRET_ACESS_KEY": "%BATCHLAB_API_AWS_SECRET_ACCESS_KEY%"
+        "AWS_SECRET_ACCESS_KEY": "%BATCHLAB_API_AWS_SECRET_ACCESS_KEY%"
       }
     }
   }

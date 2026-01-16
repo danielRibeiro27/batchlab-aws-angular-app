@@ -23,8 +23,7 @@ var app = builder.Build();
 app.MapGet("/jobs/{id}", async (string id, IJobApplicationService _jobService) =>
 {
     var jobEntity = await _jobService.GetByIdAsync(id);
-    if(jobEntity == null)
-        return Results.NotFound();
+    if(jobEntity == null) return Results.NotFound();
 
     var jobDto = new JobDto
     {

@@ -12,7 +12,9 @@ namespace BatchLabApi.Infrastructure.Implementation{
         private const string TableName = "Jobs";
         public async Task<bool> CreateAsync(JobEntity entity)
         {
-            //Used Document model here for simplicity
+            ArgumentNullException.ThrowIfNull(entity);
+            ArgumentException.ThrowIfNullOrEmpty(entity.Id.ToString());
+                
             var jobAsJson = JsonSerializer.Serialize(entity);
             var itemAsDocument = Document.FromJson(jobAsJson);
             var itemAsAttributes = itemAsDocument.ToAttributeMap();
@@ -41,10 +43,10 @@ namespace BatchLabApi.Infrastructure.Implementation{
             {
                 var job = new JobEntity
                 {
-                    Id = Guid.Parse(item["Id"].S),
-                    Description = item["Description"].S,
-                    Status = item["Status"].S,
-                    CreatedAt = DateTime.Parse(item["CreatedAt"].S)
+                    Id = Guid.Parse(item["Id"].S), 
+                    Description = item["Description"].S, 
+                    Status = item["Status"].S, 
+                    CreatedAt = DateTime.Parse(item["CreatedAt"].S) 
                 };
                 jobs.Add(job);
             }
@@ -54,6 +56,8 @@ namespace BatchLabApi.Infrastructure.Implementation{
 
         public async Task<JobEntity?> GetByIdAsync(string id)
         {
+            ArgumentException.ThrowIfNullOrEmpty(id, nameof(id));
+
             var request = new GetItemRequest
             {
                 TableName = "Jobs",
@@ -70,13 +74,13 @@ namespace BatchLabApi.Infrastructure.Implementation{
             }
 
             //Used manual mapping here for learning purposes
-            var item = response.Item;
+            var item = response.Item; 
             var job = new JobEntity
             {
-                Id = Guid.Parse(item["Id"].S),
-                Description = item["Description"].S,
+                Id = Guid.Parse(item["Id"].S), 
+                Description = item["Description"].S, 
                 Status = item["Status"].S,
-                CreatedAt = DateTime.Parse(item["CreatedAt"].S)
+                CreatedAt = DateTime.Parse(item["CreatedAt"].S) 
             };
 
             return job; 

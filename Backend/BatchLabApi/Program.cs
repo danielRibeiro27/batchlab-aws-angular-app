@@ -1,9 +1,10 @@
-using System.Text.Json;
+using Amazon.DynamoDBv2;
+using Amazon.SQS;
 using BatchLabApi.Domain;
 using BatchLabApi.Dto;
 using BatchLabApi.Extensions;
-using BatchLabApi.Service.Implementation;
 using BatchLabApi.Service.Interface;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
 
@@ -17,11 +18,37 @@ builder.Services.AddJobApplicationInfrastructures();
 #endregion
 
 var app = builder.Build();
+
+#region Global Exception Handler
+app.UseExceptionHandler(exceptionHandlerApp =>
+{
+    exceptionHandlerApp.Run(async context =>
+    {
+        var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+        context.Response.ContentType = "application/json";
+
+        var (statusCode, errorMessage) = exception switch
+        {
+            ArgumentException ex => (400, ex.Message),
+            AmazonDynamoDBException ex => (500, "DynamoDB error: " + ex.Message),
+            AmazonSQSException ex => (500, "SQS error: " + ex.Message),
+            KeyNotFoundException ex => (500, "Data mapping error: " + ex.Message),
+            FormatException ex => (500, "Data corruption detected: " + ex.Message),
+            _ => (500, "An unexpected error occurred")
+        };
+
+        context.Response.StatusCode = statusCode;
+        await context.Response.WriteAsJsonAsync(new { error = errorMessage });
+    });
+});
 #endregion
 
 #region Endpoints
 app.MapGet("/jobs/{id}", async (string id, IJobApplicationService _jobService) =>
 {
+    if(string.IsNullOrEmpty(id))
+        return Results.BadRequest("Job ID is required.");
+
     var jobEntity = await _jobService.GetByIdAsync(id);
     if(jobEntity == null) return Results.NotFound();
 
@@ -45,16 +72,13 @@ app.MapGet("/jobs", async (IJobApplicationService _jobService) =>
     // TODO: Refactor to use LINQ Select for more concise and idiomatic transformation
     // Example: jobEntities.Select(e => new JobDto { Id = e.Id.ToString(), Description = e.Description, Status = e.Status, CreatedAt = e.CreatedAt }).ToList()
     var jobsDto = new List<JobDto>();
-    foreach (var jobEntity in jobEntities)
+    jobsDto.AddRange(jobEntities.Select(e => new JobDto
     {
-        jobsDto.Add(new JobDto
-        {
-            Id = jobEntity.Id.ToString(),
-            Description = jobEntity.Description,
-            Status = jobEntity.Status,
-            CreatedAt = jobEntity.CreatedAt
-        });
-    }
+        Id = e.Id.ToString(),
+        Description = e.Description,
+        Status = e.Status,
+        CreatedAt = e.CreatedAt
+    }));
 
     return Results.Ok(jobsDto);
 });
@@ -64,26 +88,16 @@ app.MapPost("/jobs", async Task<IResult> ([FromBody]JobDto jobDto, IJobApplicati
     if(jobDto == null)
         return Results.BadRequest("Job data is required.");
     
-    //TO-DO: Add error handling
-    //TO-DO: Validate job data
-    //TO-DO: Return proper response with job id or status
-    //TO-DO: Log the request and response
     //TO-DO: Create mapper between JobDto and JobEntity
     JobEntity jobEntity = new(jobDto.Description!);
     var result = await _jobService.PublishAsync(jobEntity);
     if(!result)
-        return Results.StatusCode(500);
+        return Results.Json(new { error = "Failed to publish job to message bus" }, statusCode: 500);
 
-    var createdJobDto = new JobDto
-    {
-        Id = jobEntity.Id.ToString(),
-        Description = jobEntity.Description,
-        Status = jobEntity.Status,
-        CreatedAt = jobEntity.CreatedAt
-    };
-
-    return Results.Created($"/jobs/{createdJobDto.Id}", createdJobDto);
+    return Results.Created($"/jobs/{jobEntity.Id}", jobEntity);
 });
+
+#endregion
 
 #endregion
 

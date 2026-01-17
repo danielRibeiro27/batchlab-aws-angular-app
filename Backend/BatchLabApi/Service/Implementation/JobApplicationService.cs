@@ -12,21 +12,25 @@ namespace BatchLabApi.Service.Implementation
 
         public async Task<bool> PublishAsync(JobEntity job)
         {
-            //No need to await here as we want to do both concurrently
-            await _messageBus.PublishAsync(job);
-            await _jobsRepository.CreateAsync(job);
+            ArgumentNullException.ThrowIfNull(job, nameof(job));
+            ArgumentException.ThrowIfNullOrEmpty(job.Id.ToString(), nameof(job.Id));
+
+            _messageBus.PublishAsync(job);
+            await _jobsRepository.CreateAsync(job); //only awaits for informing user of db creation
             return true;
         }
 
         public async Task<JobEntity?> GetByIdAsync(string id)
         {
+            ArgumentException.ThrowIfNullOrEmpty(id, nameof(id));
             JobEntity? job = await _jobsRepository.GetByIdAsync(id);
             return job;
         }
 
         public async Task<List<JobEntity>> GetAllAsync()
         {
-            return await _jobsRepository.GetAllAsync();
+            var jobs = await _jobsRepository.GetAllAsync();
+            return jobs;
         }
     }
 }

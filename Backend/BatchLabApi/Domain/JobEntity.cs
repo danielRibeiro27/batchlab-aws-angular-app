@@ -17,6 +17,9 @@ namespace BatchLabApi.Domain
 
         public JobEntity(string description)
         {
+            if(string.IsNullOrEmpty(description))
+                throw new ArgumentException("Job description cannot be null or empty.", nameof(description));
+
             Id = Guid.NewGuid();
             CreatedAt = DateTime.UtcNow;
             Status = "Pending";

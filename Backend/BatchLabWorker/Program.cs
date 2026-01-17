@@ -11,6 +11,9 @@ var client = new AmazonSQSClient();
 var queueUrl = await client.GetQueueUrlAsync("BatchlabJobs");
 Console.WriteLine("Worker Queue: " + queueUrl.QueueUrl);
 
+if(queueUrl == null || string.IsNullOrEmpty(queueUrl.QueueUrl))
+    throw new NullReferenceException("Queue URL is null or empty. Please check your AWS SQS configuration.");
+
 //TO-DO: Move receive message request config to appsettings.json
 var receiveMessageRequest = new ReceiveMessageRequest
 {
@@ -29,7 +32,8 @@ while(true){
             //TO-DO: Add error handling (try-catch) around message processing and deletion to prevent message loss and worker crashes
             Console.WriteLine("Message received: " + message.Body); //TO-DO: Process the message (e.g., perform the job)
 
-            JobEntity jobEntity = JsonSerializer.Deserialize<JobEntity>(message.Body)!;
+            //validate here
+            JobEntity jobEntity = JsonSerializer.Deserialize<JobEntity>(message.Body)!; 
             await FakeProcessJobAsync(jobEntity);
             jobEntity.Status = "Completed";
 
@@ -53,10 +57,8 @@ while(true){
 static async Task FakeProcessJobAsync(JobEntity jobData)
 {
     //Simulate job processing time
-    // TODO: Use Random.Shared instead of creating new Random instance for better performance and thread safety
     Random rand = Random.Shared;
     int processingTime = rand.Next(1000, 50000); //Random processing time between 1-50 seconds
-    // TODO: Replace Thread.Sleep with await Task.Delay() to properly support async operations
     await Task.Delay(processingTime);
     if(rand.NextDouble() < 0.1) //10% chance to simulate job failure
     {

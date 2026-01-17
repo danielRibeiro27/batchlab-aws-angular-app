@@ -60,7 +60,6 @@ Backend/
 ├── Infrastructure/         # AWS integrations (SQS, DynamoDB)
 │   ├── Messaging/         # SQS publishers and consumers
 │   └── Persistence/       # DynamoDB repositories
-├── Workers/               # Background workers
 └── Configuration/         # Settings and DI setup
 ```
 
@@ -102,11 +101,6 @@ Backend/
   ```csharp
   if (!validationResult.IsValid)
       return Results.ValidationProblem(validationResult.Errors);
-  ```
-- **Logging**: Always log with context (JobId, UserId, etc.)
-  ```csharp
-  _logger.LogInformation("Processing job {JobId}", jobId);
-  _logger.LogError(ex, "Failed to process job {JobId}", jobId);
   ```
 
 #### SQS Messaging
@@ -324,44 +318,10 @@ Frontend/src/app/
 
 #### Code Review
 - **Pull Request Reviews**: All code must be reviewed via PRs
-- **Minimum 1 Approval**: At least one approval required before merge
-- **CI Must Pass**: All CI checks must pass before merge
 - **Small PRs**: Keep PRs focused and small for easier review
 
 #### Testing
-- **Backend**: Use xUnit or NUnit for unit and integration tests
-  ```csharp
-  [Fact]
-  public async Task CreateJobAsync_ShouldReturnJobId()
-  {
-      // Arrange
-      var request = new CreateJobRequest("TestJob", "{}");
-      
-      // Act
-      var result = await _jobService.CreateJobAsync(request);
-      
-      // Assert
-      Assert.NotEqual(Guid.Empty, result.JobId);
-  }
-  ```
-
-- **Frontend**: Use Vitest for unit tests
-  ```typescript
-  describe('JobService', () => {
-    it('should create a job', async () => {
-      const request = { name: 'Test', payload: '{}' };
-      const response = await firstValueFrom(service.createJob(request));
-      expect(response.id).toBeDefined();
-    });
-  });
-  ```
-
-- **Critical Path Coverage**: Minimum test coverage for critical paths
-  - Job creation flow
-  - Status updates
-  - Message publishing and consumption
-  - Error handling scenarios
-
+- **To be build**
 ---
 
 ## 4. Explicitly Out of Scope (Deliberate Cuts)
@@ -397,7 +357,7 @@ This full loop must work for the project to be considered delivered.
 ## 6. MVP – Non‑Negotiable Scope
 
 ### Backend
-- `POST /jobs` – create a batch job
+- `POST /jobs` – create a job
 - `GET /jobs/{id}` – retrieve job status
 - Publish messages to SQS
 - Background worker consuming SQS
@@ -460,6 +420,14 @@ This full loop must work for the project to be considered delivered.
 - Job creation: up to **~100 jobs/second**
 - Status reads (polling): **~20–100 req/s**
 
+### Dynamo DB Estimate ###
+- Item size: ~1 KB
+- Writes: ~200 writes/s (peak) ~200 WCU
+- Reads: ~100 reads/s ~50 RCU
+- Consistency: Eventual
+- Transactions: none
+- In develop we are limited to ≤ 25 WCU / 25 RCU
+
 ### SQS Characteristics
 - Queue type: Standard
 - Backlog capacity: effectively unlimited
@@ -512,6 +480,11 @@ Frontend is not the bottleneck; API and storage are.
 - Reads: polling driven
 - Writes: job creation + updates
 - Expected cost: low tens of USD/month
+- 100 users = 100 job/s == 100kb/s
+- Job TTL: 6h ~2.1GB
+- DynamoDB Physical Data Storage Cost (Monthly): 0.79 USD
+- Monthly recording cost (Monthly): 246.38 USD
+- Monthly reading cost (Monthly): 4.93 USD
 
 ### Cost Insight
 - SQS is not the financial bottleneck

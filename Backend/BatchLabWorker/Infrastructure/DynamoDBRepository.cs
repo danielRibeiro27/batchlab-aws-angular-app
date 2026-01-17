@@ -26,16 +26,37 @@ namespace BatchLabWorker.Infrastructure
                 },
                 ExpressionAttributeNames = new Dictionary<string, string>
                 {
-                    { "#s", "Status" }
+                    { "#S", "Status" }
                 },
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     { ":status", new AttributeValue { S = job.Status } }
                 },
-                UpdateExpression = "SET #s = :status"
+                ConditionExpression = "#S = 'Pending'", // Only update if status is 'Pending'
+                UpdateExpression = "SET #S = :status"
             };
 
             await _dynamoDbClient.UpdateItemAsync(updateItemRequest);
+        }
+    
+        public async Task<string> GetJobStatusAsync(string jobId)
+        {
+            var getItemRequest = new GetItemRequest
+            {
+                TableName = TableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    { "Id", new AttributeValue { S = jobId } }
+                }
+            };
+
+            var response = await _dynamoDbClient.GetItemAsync(getItemRequest);
+            if (response.Item != null && response.Item.ContainsKey("Status"))
+            {
+                return response.Item["Status"].S;
+            }
+
+            throw new Exception($"Job with Id {jobId} not found.");
         }
     }
 }

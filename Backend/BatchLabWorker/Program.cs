@@ -9,6 +9,7 @@ using BatchLabWorker.Infrastructure;
 //TO-DO: Use interface for AWS client?
 var client = new AmazonSQSClient();
 var queueUrl = await client.GetQueueUrlAsync("BatchlabJobs");
+var _repository = new DynamoDBRepository(new Amazon.DynamoDBv2.AmazonDynamoDBClient());
 Console.WriteLine("Worker Queue: " + queueUrl.QueueUrl);
 
 if(queueUrl == null || string.IsNullOrEmpty(queueUrl.QueueUrl))
@@ -29,38 +30,67 @@ while(true){
     {
         foreach(var message in response.Messages)
         {
-            //TO-DO: Add error handling (try-catch) around message processing and deletion to prevent message loss and worker crashes
-            Console.WriteLine("Message received: " + message.Body); //TO-DO: Process the message (e.g., perform the job)
+            ArgumentException.ThrowIfNullOrEmpty(message.Body, nameof(message.Body));
+            Console.WriteLine("Message received: " + message.Body);
 
-            //validate here
-            JobEntity jobEntity = JsonSerializer.Deserialize<JobEntity>(message.Body)!; 
-            await FakeProcessJobAsync(jobEntity);
-            jobEntity.Status = "Completed";
-
-            // var _repository = new JsonFileRepository("../BatchLabApi/jobs.json");
-            // _ = await _repository.UpdateAsync(jobEntity);
-            var _repository = new DynamoDBRepository(new Amazon.DynamoDBv2.AmazonDynamoDBClient());
-            await _repository.UpdateJobStatusAsync(jobEntity);
-            Console.WriteLine("Job updated in repository: " + jobEntity.Id);
-
-            var deleteMessageRequest = new DeleteMessageRequest
+            try
             {
-                QueueUrl = queueUrl.QueueUrl,
-                ReceiptHandle = message.ReceiptHandle
-            };
-            await client.DeleteMessageAsync(deleteMessageRequest);
-            Console.WriteLine("Message deleted: " + message.MessageId);
+                JobEntity jobEntity = JsonSerializer.Deserialize<JobEntity>(message.Body)!; //throw serialize exception
+
+                string status = await _repository.GetJobStatusAsync(jobEntity.Id.ToString()); //throw repo exception
+                if(status != "Pending") //idempotency
+                    continue;
+
+                await FakeProcessJobAsync(jobEntity); //throw processing exception       
+
+                jobEntity.Status = "Completed";
+
+                // var _repository = new JsonFileRepository("../BatchLabApi/jobs.json");
+                // _ = await _repository.UpdateAsync(jobEntity);
+                await _repository.UpdateJobStatusAsync(jobEntity); //throw ConditionalCheckFailedException
+                Console.WriteLine("Job updated in repository: " + jobEntity.Id);
+
+                var deleteMessageRequest = new DeleteMessageRequest
+                {
+                    QueueUrl = queueUrl.QueueUrl,
+                    ReceiptHandle = message.ReceiptHandle
+                };
+                await client.DeleteMessageAsync(deleteMessageRequest); //throw ReceiptHandleIsInvalid 
+                Console.WriteLine("Message deleted: " + message.MessageId);
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"Failed to deserialize message {message.MessageId}: {ex.Message}");
+            }
+            catch (Amazon.DynamoDBv2.Model.ConditionalCheckFailedException ex)
+            {
+                Console.WriteLine($"Failed to update job status - conditional check failed for job {message.MessageId}: {ex.Message}");
+            }
+            catch (ReceiptHandleIsInvalidException ex)
+            {
+                Console.WriteLine($"Failed to delete message - invalid receipt handle for message {message.MessageId}: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing message {message.MessageId}: {ex.Message}");
+            }
+            finally
+            {
+                //TO-DO: Change status here to failed or completed based on the exception type and retry logic
+                Console.WriteLine($"Finished processing message {message.MessageId}");
+            }
         }
     }
 }
 
+//TO-DO: Add transactional idempotency for preventing server states changes on duplicate
 static async Task FakeProcessJobAsync(JobEntity jobData)
 {
     //Simulate job processing time
     Random rand = Random.Shared;
     int processingTime = rand.Next(1000, 50000); //Random processing time between 1-50 seconds
     await Task.Delay(processingTime);
-    if(rand.NextDouble() < 0.1) //10% chance to simulate job failure
+    if(rand.NextDouble() < 0.5) //50% chance to simulate job failure
     {
         throw new Exception("Simulated job processing failure.");
     }

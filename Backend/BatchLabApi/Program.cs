@@ -7,7 +7,6 @@ using BatchLabApi.Service.Interface;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
-
 #region Initial Setup
 
 var builder = WebApplication.CreateBuilder(args);
